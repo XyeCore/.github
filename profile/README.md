@@ -13,7 +13,12 @@ As a cohesive unit, we specialize in:
 
 ## 📂 Our Repositories  
 Browse our core projects and contribute where you can:  
-- [Appluni-Frontend](https://github.com/XyeCore/Appluni-Frontend) – Private, TypeScript-based client application  
+
+### Appluni 
+a website that manages application of students in European universities
+- [Appluni-Frontend](https://github.com/XyeCore/Appluni-Frontend) – modern  React web application which provides a user-friendly interface for interacting with users and includes features such as authentication, application management, and university browsing.
+- [Appluni-API](https://github.com/XyeCore/Appluni-API) – a server-side application built with Spring Boot that provides a RESTful interface for managing universities, academic programs, and student applications.
+The project uses JWT-based authentication and stores data in PostgreSQL.
 
 Additional repositories will be announced here as they become available.
 
