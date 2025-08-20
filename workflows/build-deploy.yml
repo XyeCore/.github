@@ -2,12 +2,12 @@ name: build-deploy
 on:
   workflow_call:
     inputs:
-      image_name:      { required: true,  type: string }   # docker.io/<user>/<repo>
-      k8s_namespace:   { required: true,  type: string }   # prod
-      k8s_deployment:  { required: true,  type: string }   # frontend / backend
+      image_name:      { required: true,  type: string }
+      k8s_namespace:   { required: true,  type: string }
+      k8s_deployment:  { required: true,  type: string }
       context:         { required: false, type: string, default: . }
       dockerfile:      { required: false, type: string, default: ./Dockerfile }
-      container_name:  { required: false, type: string, default: "" } # если пусто — берём 1-й контейнер
+      container_name:  { required: false, type: string, default: "" }
     secrets:
       DOCKERHUB_USERNAME: { required: true }
       DOCKERHUB_TOKEN:    { required: true }
