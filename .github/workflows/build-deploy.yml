@@ -44,30 +44,32 @@ jobs:
       - name: Compose build-args
         id: compose
         shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t LINES < <(printf "%s\n" \
-            "${SPRING_DATASOURCE_URL:+SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL}" \
-            "${SPRING_DATASOURCE_USERNAME:+SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME}" \
-            "${SPRING_DATASOURCE_PASSWORD:+SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD}" \
-            "${TOKEN_SIGNING_KEY:+TOKEN_SIGNING_KEY=$TOKEN_SIGNING_KEY}" \
-            "${VITE_API_URL:+VITE_API_URL=$VITE_API_URL}" \
-          )
-          # добавим сырые build_args из inputs (если есть)
-          EXTRA="${{ inputs.build_args }}"
-          {
-            echo "BUILD_ARGS<<'EOF'"
-            printf "%s\n" "${LINES[@]}"
-            [ -n "$EXTRA" ] && printf "%s\n" "$EXTRA"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
         env:
+          EXTRA: ${{ inputs.build_args }}
+          # опциональные секренты — если в вызывающем wf их нет, строки не добавятся
           SPRING_DATASOURCE_URL:       ${{ secrets.SPRING_DATASOURCE_URL }}
           SPRING_DATASOURCE_USERNAME:  ${{ secrets.SPRING_DATASOURCE_USERNAME }}
           SPRING_DATASOURCE_PASSWORD:  ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
           TOKEN_SIGNING_KEY:           ${{ secrets.TOKEN_SIGNING_KEY }}
           VITE_API_URL:                ${{ secrets.VITE_API_URL }}
+        run: |
+          set -euo pipefail
+
+          out=""
+          [[ -n "${SPRING_DATASOURCE_URL:-}"      ]] && out+=$'SPRING_DATASOURCE_URL='"'"${SPRING_DATASOURCE_URL}"'"$'\n'
+          [[ -n "${SPRING_DATASOURCE_USERNAME:-}" ]] && out+=$'SPRING_DATASOURCE_USERNAME='"'"${SPRING_DATASOURCE_USERNAME}"'"$'\n'
+          [[ -n "${SPRING_DATASOURCE_PASSWORD:-}" ]] && out+=$'SPRING_DATASOURCE_PASSWORD='"'"${SPRING_DATASOURCE_PASSWORD}"'"$'\n'
+          [[ -n "${TOKEN_SIGNING_KEY:-}"          ]] && out+=$'TOKEN_SIGNING_KEY='"'"${TOKEN_SIGNING_KEY}"'"$'\n'
+          [[ -n "${VITE_API_URL:-}"               ]] && out+=$'VITE_API_URL='"'"${VITE_API_URL}"'"$'\n'
+          [[ -n "${EXTRA:-}"                      ]] && out+="${EXTRA}"$'\n'
+
+          {
+            echo "BUILD_ARGS<<EOF"
+            printf "%s" "$out"
+            echo
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
 
       - name: Build & Push
         uses: docker/build-push-action@v6
