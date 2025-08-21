@@ -8,12 +8,21 @@ on:
       context:         { required: false, type: string, default: . }
       dockerfile:      { required: false, type: string, default: ./Dockerfile }
       container_name:  { required: false, type: string, default: "" }
-      build_args:      { required: false, type: string, default: "" } # <— добавил build-args
+      # опционально — сырые build-args строкой (если вдруг понадобится)
+      build_args:      { required: false, type: string, default: "" }
 
+    # здесь объявляем ВСЕ секреты, которые МОЖЕМ получить от вызывающих workflow
     secrets:
-      DOCKERHUB_USERNAME: { required: true }
-      DOCKERHUB_TOKEN:    { required: true }
-      KUBECONFIG_BASE64:  { required: true }
+      DOCKERHUB_USERNAME:          { required: true }
+      DOCKERHUB_TOKEN:             { required: true }
+      KUBECONFIG_BASE64:           { required: true }
+      # backend (опционально)
+      SPRING_DATASOURCE_URL:       { required: false }
+      SPRING_DATASOURCE_USERNAME:  { required: false }
+      SPRING_DATASOURCE_PASSWORD:  { required: false }
+      TOKEN_SIGNING_KEY:           { required: false }
+      # frontend (опционально)
+      VITE_API_URL:                { required: false }
 
 jobs:
   build-and-push:
@@ -31,6 +40,35 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # Соберём build-args из переданных secrets (только те, что реально заданы)
+      - name: Compose build-args
+        id: compose
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t LINES < <(printf "%s\n" \
+            "${SPRING_DATASOURCE_URL:+SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL}" \
+            "${SPRING_DATASOURCE_USERNAME:+SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME}" \
+            "${SPRING_DATASOURCE_PASSWORD:+SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD}" \
+            "${TOKEN_SIGNING_KEY:+TOKEN_SIGNING_KEY=$TOKEN_SIGNING_KEY}" \
+            "${VITE_API_URL:+VITE_API_URL=$VITE_API_URL}" \
+          )
+          # добавим сырые build_args из inputs (если есть)
+          EXTRA="${{ inputs.build_args }}"
+          {
+            echo "BUILD_ARGS<<'EOF'"
+            printf "%s\n" "${LINES[@]}"
+            [ -n "$EXTRA" ] && printf "%s\n" "$EXTRA"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+        env:
+          SPRING_DATASOURCE_URL:       ${{ secrets.SPRING_DATASOURCE_URL }}
+          SPRING_DATASOURCE_USERNAME:  ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          SPRING_DATASOURCE_PASSWORD:  ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+          TOKEN_SIGNING_KEY:           ${{ secrets.TOKEN_SIGNING_KEY }}
+          VITE_API_URL:                ${{ secrets.VITE_API_URL }}
+
       - name: Build & Push
         uses: docker/build-push-action@v6
         with:
@@ -40,7 +78,9 @@ jobs:
           tags: |
             docker.io/${{ inputs.image_name }}:latest
             docker.io/${{ inputs.image_name }}:sha-${{ github.sha }}
-          build-args: ${{ inputs.build_args }}   # <— передаём билд-аргументы
+          build-args: ${{ steps.compose.outputs.BUILD_ARGS }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Save SHA tag for deploy
         id: out
