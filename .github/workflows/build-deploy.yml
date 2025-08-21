@@ -1,17 +1,18 @@
 name: build-deploy
+
 on:
   workflow_call:
     inputs:
-      image_name:      { required: true,  type: string }
-      k8s_namespace:   { required: true,  type: string }
-      k8s_deployment:  { required: true,  type: string }
+      image_name:      { required: true,  type: string }   # dockerhub_repo/image
+      k8s_namespace:   { required: true,  type: string }   # prod
+      k8s_deployment:  { required: true,  type: string }   # frontend / backend
       context:         { required: false, type: string, default: . }
       dockerfile:      { required: false, type: string, default: ./Dockerfile }
       container_name:  { required: false, type: string, default: "" }
     secrets:
-      DOCKERHUB_USERNAME: { required: true }
-      DOCKERHUB_TOKEN:    { required: true }
-      KUBECONFIG_BASE64:  { required: true }
+      DOCKERHUB_USERNAME: { required: true }               # Org secret
+      DOCKERHUB_TOKEN:    { required: true }               # Org secret (Access Token)
+      KUBECONFIG_BASE64:  { required: true }               # Env secret (prod) из вызывающей репы
 
 jobs:
   build-and-push:
