@@ -86,7 +86,7 @@ jobs:
 
       - name: Save SHA tag for deploy
         id: out
-        run: echo "SHA_TAG=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "SHA_TAG=sha-${GITHUB_SHA}" >> $GITHUB_OUTPUT
 
   deploy:
     needs: build-and-push
