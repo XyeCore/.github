@@ -1,18 +1,19 @@
 name: build-deploy
-
 on:
   workflow_call:
     inputs:
-      image_name:      { required: true,  type: string }   # dockerhub_repo/image
-      k8s_namespace:   { required: true,  type: string }   # prod
-      k8s_deployment:  { required: true,  type: string }   # frontend / backend
+      image_name:      { required: true,  type: string }
+      k8s_namespace:   { required: true,  type: string }
+      k8s_deployment:  { required: true,  type: string }
       context:         { required: false, type: string, default: . }
       dockerfile:      { required: false, type: string, default: ./Dockerfile }
       container_name:  { required: false, type: string, default: "" }
+      build_args:      { required: false, type: string, default: "" } # <— добавил build-args
+
     secrets:
-      DOCKERHUB_USERNAME: { required: true }               # Org secret
-      DOCKERHUB_TOKEN:    { required: true }               # Org secret (Access Token)
-      KUBECONFIG_BASE64:  { required: true }               # Env secret (prod) из вызывающей репы
+      DOCKERHUB_USERNAME: { required: true }
+      DOCKERHUB_TOKEN:    { required: true }
+      KUBECONFIG_BASE64:  { required: true }
 
 jobs:
   build-and-push:
@@ -28,17 +29,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: docker.io/${{ inputs.image_name }}
-          tags: |
-            type=sha,format=short,prefix=sha-
-            type=raw,value=latest
-          labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Build & Push
@@ -47,15 +37,14 @@ jobs:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            docker.io/${{ inputs.image_name }}:latest
+            docker.io/${{ inputs.image_name }}:sha-${{ github.sha }}
+          build-args: ${{ inputs.build_args }}   # <— передаём билд-аргументы
 
       - name: Save SHA tag for deploy
         id: out
-        run: |
-          echo "SHA_TAG=$(echo '${{ steps.meta.outputs.tags }}' | tr ' ' '\n' | grep 'sha-' | head -n1 | cut -d: -f2)" >> $GITHUB_OUTPUT
+        run: echo "SHA_TAG=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
   deploy:
     needs: build-and-push
